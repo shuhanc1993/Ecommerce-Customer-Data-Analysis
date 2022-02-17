@@ -1,0 +1,412 @@
+---
+title: "Analysis of E-Commerce Customer Data"
+author: "Shuhan Chang"
+date: "June 14th, 2021"
+output:
+  html_document:
+    fig_width: 8
+    code_folding: hide
+    highlight: tango
+    toc: yes
+    toc_float:
+      collapsed: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=8, fig.height=5,
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+
+## Dataset Details
+
+The data set was created by Prachi Gopalani and shared on Kaggle. The data was collected from an international e-commerce company that sells electronic products. This data set includes 10,999 rows and 13 attributes. Descriptions of all attribute are shown below.
+
+ - ID: ID Number of customers.
+ - Warehouse block: The Company have a big Warehouse and it is divided into block A,B,C,D,and E.
+ - Mode of shipment:The Company Ships their products using Ship, Flight and Road.
+ - Customer care calls: The number of calls made for inquiring of the shipment.
+ - Customer rating: The company has rated from every customer. 1 is the lowest (Worst), 5 is the highest (Best).
+ - Cost of the product: Cost of the Product of the shipment in US Dollars.
+ - Prior purchases: The Number of Prior Purchases from the customer.
+ - Product importance: The company has categorized the product in the various parameter such as low, medium, high. High importance of products are those with high profit margins.
+ - Gender: Male or Female of the customer.
+ - Discount offered: Amount of discount offered on the specific product in US dollars.
+ - Weight in gms: The weight of the shipment in grams.
+ - Reached on time: 1 Indicates that the product has NOT delivered on time and 0 indicates the product has delivered on time.
+ - Original product cost: It is the original price of product before discount.
+ 
+```{r echo=TRUE}
+library(rmarkdown)
+data <- read.csv("../ecommerce.csv", TRUE, ",")
+
+## Add one column to show the original product cost before discount
+data$original_product_cost <- data$Cost_of_the_Product + data$Discount_offered
+paged_table(data)
+
+library(tidyverse)
+data.tib <- as.tibble(data)
+```
+## Goal of Analysis
+
+The goal of this analysis is to derive critical information and discover key insights for this international e-commerce company from their customer database to help the company make knowledgeable decisions. This data analysis will allow the Chief Sales Officer (CSO) build the best business strategies to retain valuable customers, increase profits, and acquire more customers. 
+
+## Mode of Shipment for the Company
+
+First, examine the current Mode of Shipment for the logistic department of the compnay. This company uses three types of transportation to ship their products: Flight, Road, and Ship. Flight transportation is the fastest shipping method with the highest costs; Ship transportation is the slowest shipping method with the lowest costs; while the speed and the cost of Road transportation are in between flight and ship transportation. Choosing between different methods of shipping depends on the products' characteristics and the quantity of the products per shipment. 
+
+```{r echo=TRUE}
+###### 1.
+###### Do the analysis as in Module 3 for at least one categorical variable and 
+###### at least one numerical variable. Show appropriate plots for your data.
+
+## a) Categorical variable: Mode_of_Shipment
+library(plotly)
+p <- plot_ly(data, x = ~Mode_of_Shipment, type = "histogram") %>%
+  layout(xaxis = list(title = "Mode of Shipment"), 
+         yaxis = list(title = "Frequency"))
+p
+```
+
+### Finding
+This international company mainly uses ship transportation for shipping their products to the customers. This indicates that most of their products are not sensitive to the latest trends. Examples include common electronic accessories and electronic supplies. Shipping in large quantity of products via ships helps lower costs on logistic expenses for the company.
+
+
+## Product weights
+
+Product weight is one of the factors that would affect the shipping costs. The graph below is to examine the product weights in grams from all the observations using box plot.
+
+```{r echo=TRUE}
+###### 1.
+###### Do the analysis as in Module 3 for at least one categorical variable and 
+###### at least one numerical variable. Show appropriate plots for your data.
+
+## b) Numerical variable: weight_in_gms of products
+p.1 <- plot_ly(data, x = ~Weight_in_gms, type = "box", name = "") %>%
+  layout(xaxis = list(title = "Weight in Grams"),
+         yaxis = list(title = "Product Weight"))
+p.1
+```
+### Finding
+
+This box plot shows a right-skewed distribution on product weights. Among 10,999 observations, the weight of products concentrates in the lower end of the scale. 50% of the product weigh between 1839 grams and 5050 grams. 
+
+## Product Importance / On-time or Late Delivery
+
+This bar chart is to examine if there are any relationships between the importance of product and the frequency of late and on-time delivery. 
+
+```{r echo=TRUE}
+###### 2.
+###### Do the analysis as in Module3 for at least one set of two or more 
+###### variables. Show appropriate plots for your data.
+
+## a) product importance vs delivered on time or not
+counts <- data.frame(rbind(table(data$Product_importance, data$Reached.on.Time_Y.N))) 
+colnames(counts) <- c("Reached_on_Time_N", "Reached_on_Time_Y")
+counts <- counts[order(counts$Reached_on_Time_N),]
+
+x_values <- rownames(counts)
+x_values <- factor(x_values)
+x_values <- factor(x_values, levels = c("low", "medium", "high"))
+
+p.2 <- counts %>% 
+        plot_ly(x = x_values, y = ~Reached_on_Time_N, type="bar", 
+                name="Not on Time")   %>% 
+        add_trace(y = ~Reached_on_Time_Y, name = "On Time")  %>% 
+        layout(yaxis = list(title = "Frequency"), 
+               xaxis = list(title = "Product Level of Importance"),
+               barmode = 'group') 
+p.2
+```
+#### Table of the percentages from the Graph
+```{r echo=TRUE}
+prop.table(as.matrix(counts[,1:2]), margin = 1) * 100
+```
+
+### Finding
+
+The graph and the table showed that both low and medium importance of products have higher possibility of late delivery than high importance of products. This company tends to pay more attention on their high profit margin products and is more likely to deliver them on-time to customers.
+
+## Cost of the Product / Discount Offered with 500 sample size
+
+The graph below contains 500 customers randomly selected from all customers to discover the relationship between cost of the product and discount offered attributes and to examine if there is any correlation between the two attributes.
+
+```{r echo=TRUE}
+###### 2.
+###### Do the analysis as in Module3 for at least one set of two or more 
+###### variables. Show appropriate plots for your data.
+
+## b) cost of the product vs discount offered with 500 sample size
+library(sampling)
+set.seed(123)
+s <- sample(data$ID, size = 500)
+p.3 <- plot_ly(x = data$Cost_of_the_Product[s], y = data$Discount_offered[s]) %>%
+  layout(xaxis = list(title = "Cost of the Product"), 
+         yaxis = list(title = "Discount"))
+p.3
+```
+
+### Finding
+
+The plot indicates that there is no obvious relationship between product costs and discounts. Most of the discount offered are between 0 to 10 dollars.
+
+## Distribution of the Original Product Cost Attribute
+
+The density graph below shows customers' purchasing habits to the price of the products they purchased.
+
+```{r echo=TRUE}
+###### 3.
+###### Pick one variable with numerical data and examine the distribution of 
+###### the data.
+
+## Original product cost
+density <- density(data$original_product_cost)
+
+p.4 <- plot_ly(x = data$original_product_cost, type = "histogram",
+               name = "Histogram") %>%
+  layout(xaxis = list(title = "Original price"),
+         yaxis = list(title = "Frequency")) %>%
+  add_trace(x = density$x, y = ~density$y, type = "scatter", mode = "lines",
+            line = list(color = "red", width = 4, dash = "dot"),
+            fill = "tozeroy", yaxis = "y2", name = "Density") %>%
+  layout(yaxis2 = list(overlaying = "y", side = "right"))
+
+p.4
+```
+
+### Finding
+
+The distribution of the original product cost is slightly left skewed which indicates that customers are more likely to purchase the products with higher price.
+
+## Central Limit Theorem 
+
+"CLT is a statistical theory stating that given a sufficiently large sample size from a population with a finite level of variance, the mean of all samples from the same population will be approximately equal to the mean of the population(Ganti)." In other words, as the sample sizes get larger, the mean of the sample will get closer to the population mean and the distribution of the sample means for a given sample size of the population will have the shape of the normal distribution.
+
+CLT is tested with the original product cost attribute with 5000 random samples of sample sizes of 10, 20, 30, and 40. In the previous section it was shown that the distribution of the original product cost was not normal.
+```{r echo=TRUE}
+###### 4.
+###### Draw various random samples of the data and show the applicability of 
+###### the Central Limit Theorem for this variable.
+
+## original product cost
+## population mean and sd
+popu.mean <- mean(data$original_product_cost)
+popu.sd <- sd(data$original_product_cost)
+## cat(c("Population mean = ", popu.mean, ",", "Population SD = ", popu.sd))
+
+## Generate 5000 random values from the normal distribution using 
+## original_product_cost attribute, with samples sizes of 10, 20, 30, and 40, 
+## draw 1000 samples from the data
+par(mfrow = c(2,2))
+hist.color <- c("skyblue", "thistle1", "wheat1", "seagreen3")
+
+set.seed(123)
+x <- rnorm(5000, mean = popu.mean, sd = popu.sd)
+samples <- 1000
+xbar <- numeric(samples)
+set.seed(123)
+for(sample.size in c(10, 20, 30, 40)){
+  for(i in 1:samples){
+    xbar[i] <- mean(sample(x, size = sample.size, replace = FALSE))
+  }
+  hist(xbar, prob = TRUE, ylim = c(0, 0.08), xlim = c(160, 280), 
+       main = paste("Sample Size = ", sample.size), 
+       col = hist.color[sample.size / 10])
+}
+## Print each mean and sd 
+cat(c("Population mean = ", popu.mean, ",", "Population SD = ", popu.sd))
+for(sample.size in c(10, 20, 30, 40)){
+  for(i in 1:samples){
+    xbar[i] <- mean(sample(x, size = sample.size, replace = FALSE))
+  }
+  cat("Sample Size = ", sample.size, " Mean = ", mean(xbar), 
+      " SD = ", sd(xbar), "\n")
+}
+
+par(mfrow = c(1,1))
+
+```
+### Finding
+
+The graph and the numbers show that all sample means are very close to the population mean and the standard deviations get smaller when the sample sizes get larger.
+
+## Customer care call / Average Product Cost
+
+The customer care manager would like to know if there is any relationship between the frequency of customers calling the customer service center and the average amount of spending on the products. Customer with 2 to 7 calls are selected.
+
+```{r echo=TRUE}
+###### 6.
+##### Implementation of any feature(s) not mentioned in the above specification.
+
+## (a) Customer care call / Average Product Cost
+data.tib %>%
+  group_by(Customer_care_calls) %>%
+  summarise(avg_cost = mean(Cost_of_the_Product)) -> F
+
+F.matrix <- matrix(F %>% pull(avg_cost), nrow = 1, ncol = 6)
+colnames(F.matrix) <- F %>% pull(Customer_care_calls)
+
+barplot(F.matrix, ylim = c(0, 300), xlab = "Number of Customer Care Call",
+        ylab = "Average Cost of the Product", col = "rosybrown1")
+```
+
+### Finding
+
+The graph shows that customers who contact the customer service center more frequently also tend to spend more on products. The company may want to provide more comprehensive customer services for both pre- and post-purchases or consider taking proactive customer care actions especially to customers with higher purchase amount.
+
+## Original Product Cost / Cost of Product after Discount
+
+The graph below is to examine the differences between cost of product (after discount) attribute and the original product cost attribute. The graph contains 50 random selected customers with each of their original product costs and the product costs after discounts.
+
+The data is ordered by the original cost of product from low to high.
+
+```{r echo=TRUE}
+###### 6.
+##### Implementation of any feature(s) not mentioned in the above specification.
+
+## (b) difference between cost of product vs original cost
+set.seed(123)
+random.n <- sample(1:nrow(data), 50, replace = FALSE)
+diff.cost.p <- 
+  data[c("ID","Cost_of_the_Product", "original_product_cost", "Discount_offered")]
+diff.cost.p <- diff.cost.p[order(diff.cost.p$original_product_cost), ]
+diff.cost.p$ID <- factor(diff.cost.p$ID, levels = diff.cost.p$ID[order(diff.cost.p$original_product_cost)])
+
+diff.cost.p <- diff.cost.p[diff.cost.p$ID %in% random.n, ]
+
+
+plot_ly(diff.cost.p, x = ~Cost_of_the_Product, y = ~ID, name = "Cost of the product after Discount", type = 'scatter',
+        mode = "markers", marker = list(color = "pink")) %>%
+  add_trace(x = ~original_product_cost, y = ~ID, name = "Original cost of product",type = 'scatter',
+            mode = "markers", marker = list(color = "blue")) 
+```
+
+### Finding
+
+There is no evidence showing any relationships of the difference between the original cost and the cost after discount on products for customers. This indicates that customers have no incentives on purchasing more products in one order as spending more will not get better discounts.
+
+
+## Sampling of Original Cost of Product Attribute
+
+Sampling is a process off getting a subset of information from the population. The sampling methods performed here are simple random sample without replacement, systematic sampling, systematic sampling with unequal probabilities, and stratified sampling to examine means from each sampling technique and the mean from the population. 
+
+For analyzing the behavior of the sample data on Original product cost attribute against the population, customers with prior purchases between 3 to 7 will be chosen with a sample size of 100 for each of the sampling technique.
+
+```{r}
+###### 5.
+###### Show how various sampling methods can be used on your data. What are 
+###### your conclusions if these samples are used instead of the whole data set.
+
+## Sampling of original_product_cost attribute via Simple Random Sample Without 
+## Replacement, Systematic Sampling, and Stratified Sampling
+
+## For analyzing the behavior of the sample data against the population, 
+## prior purchases between 3 to 7 will be chosen
+## Use a sample size of 100 for each of the sampling technique
+
+par(mfrow = c(2,2))
+hist(data$original_product_cost, prob = TRUE, main = "Population", 
+     xlab = "Original Product Cost", col = "seagreen3")
+abline(v = mean(data$original_product_cost), col = "red")
+samp.size <- 100
+table.purch <- data.frame(table(data$Prior_purchases))
+A <- subset(table.purch, table.purch$Var1 %in% 3:7)
+## data for prior purchase between 3-7
+B <- subset(data, data$Prior_purchases %in% A$Var1)
+
+## (1) Simple Random Sample Without Replacement
+set.seed(123)
+s <- srswor(samp.size, sum(A$Freq))
+sample.1 <- B[s != 0, ]
+hist(sample.1$original_product_cost, prob = TRUE, breaks = seq(100, 350,20),
+     main = "Simple Random Sampling", xlab = "Original Product Cost", 
+     col = "wheat1")
+abline(v = mean(sample.1$original_product_cost), col = "red")
+
+## (2) Systematic Sampling
+k <- ceiling(sum(A$Freq) / samp.size)
+  ##random item from the 1st group
+set.seed(123)
+r <- sample(k, 1)
+  ## select every kth item using systematic sampling
+sample.2 <- B[seq(r, by = k, length = samp.size), ]
+hist(sample.2$original_product_cost, prob = TRUE, breaks = seq(100, 350, 20),
+     main = "Systematic Sampling", xlab = "Original Product Cost",
+     col = "thistle1")
+abline(v = mean(sample.2$original_product_cost, na.rm = TRUE), col = "red")
+
+## (3) Systematic Sampling with unequal probabilities, 
+## Calculate the inclusion probabilities 
+pik <- inclusionprobabilities(B$Prior_purchases, samp.size)
+
+set.seed(123)
+s <- UPsystematic(pik)
+sample.3 <- B[s != 0, ]
+hist(sample.3$original_product_cost, prob = TRUE, breaks = seq(100, 350, 20),
+     main = "Systematic Sampling/Unequal Probabilities", xlab = "Original Product Cost", 
+     col = "skyblue")
+abline(v = mean(sample.3$original_product_cost, na.rm = TRUE), col = "red")
+
+par(mfrow = c(1,1))
+```
+
+
+### Stratified Sampling
+
+```{r}
+## (4) Order the data using the original_product_cost attribute. 
+## Draw a stratified sample using proportional sizes based on the 
+## original_product_cost attribute
+
+B.order <- subset(data, data$Prior_purchases %in% A$Var1)
+B.order <- B[order(B$Prior_purchases),]
+freq <- table(B.order$Prior_purchases)
+st.size <- ceiling(samp.size * freq / sum(freq))
+set.seed(123)
+st.1 <- strata(B.order, stratanames = "Prior_purchases", size = st.size, 
+               method = "srswor", description = TRUE)
+
+hist(data[st.1$ID_unit, "original_product_cost"], prob = TRUE, breaks = seq(100,
+    350, 20), main = "Stratified Sampling", xlab = "Original Product Cost", col = "thistle1")
+abline(v = mean(data[st.1$ID_unit, "original_product_cost"]), col = "red")
+
+## print all means
+cat(" Population mean = ", mean(data$original_product_cost), "\n",
+    "Simple Random Sampling mean = ", mean(sample.1$original_product_cost), "\n",
+    "Systematic Sampling mean = ", mean(sample.2$original_product_cost, na.rm = TRUE), "\n",
+    "Systematic Sampling with unequal propabilities mean = ", mean(sample.3$original_product_cost, na.rm = TRUE), "\n",
+    "Stratified Sampling mean = ", mean(data[st.1$ID_unit, "original_product_cost"]))
+
+```
+
+### Finding
+
+While the mean from each sampling techniques are all close to the population mean (223.5701), stratified sampling using proportional sizes based on the prior purchase attribute generated the closest mean to the population mean with only 1.6378 difference. This indicates that stratified sampling technique can best represent a subset of the population.
+
+## Conclusion
+
+There are a few thoughts and suggestions can be made to this international e-commerce company after analyzing the customer database. The company will need to address the high percentage of late delivery on products considering there are many more e-commerce companies out there offering fast delivery, such as Amazon prime member same-day delivery. Besides, low and medium importance products sold made up the majority revenue of the company. Having high percentage of late delivery on those products can result in negative customer reviews and lose customers. One way of retaining or acquiring customers is to provide exceptional customer services. It can be concerning that customers with higher purchasing power are in the highest calling frequency group. Providing more comprehensive, transparent, easy-accessible customer services can help lower the workload of the company call center and increase satisfied customers.
+
+
+## References
+
+C. Sievert. Interactive Web-Based Data Visualization with R,
+  plotly, and shiny. Chapman and Hall/CRC Florida, 2020.
+  
+Ganti, A. (2021, May 19). What Is the Central Limit Theorem (CLT)? Investopedia. https://www.investopedia.com/terms/c/central_limit_theorem.asp. 
+
+Gopalani, P. (2021, February). E-Commerce Shipping Data. Retrieved June 22, 2021 from https://www.kaggle.com/prachi13/customer-analytics
+
+JJ Allaire and Yihui Xie and Jonathan McPherson and Javier
+  Luraschi and Kevin Ushey and Aron Atkins and Hadley Wickham and
+  Joe Cheng and Winston Chang and Richard Iannone (2021).
+  rmarkdown: Dynamic Documents for R. R package version 2.8. URL
+  https://rmarkdown.rstudio.com.
+
+Wickham et al., (2019). Welcome to the tidyverse. Journal of Open
+  Source Software, 4(43), 1686, https://doi.org/10.21105/joss.01686
+  
+Yves Tillé and Alina Matei (2021). sampling: Survey Sampling. R
+  package version 2.9. https://CRAN.R-project.org/package=sampling
+
+
